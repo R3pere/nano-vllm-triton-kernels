@@ -1,6 +1,9 @@
 import torch
 from torch import nn
 
+from nanovllm import kernels
+from nanovllm.kernels.rms_norm import rms_norm, fused_add_rms_norm
+
 
 class RMSNorm(nn.Module):
 
@@ -12,6 +15,7 @@ class RMSNorm(nn.Module):
         super().__init__()
         self.eps = eps
         self.weight = nn.Parameter(torch.ones(hidden_size))
+        self.backend = kernels.backend
 
     @torch.compile
     def rms_forward(
@@ -44,6 +48,10 @@ class RMSNorm(nn.Module):
         x: torch.Tensor,
         residual: torch.Tensor | None = None,
     ) -> torch.Tensor | tuple[torch.Tensor, torch.Tensor]:
+        if self.backend == "triton":
+            if residual is None:
+                return rms_norm(x, self.weight, self.eps)
+            return fused_add_rms_norm(x, residual, self.weight, self.eps)
         if residual is None:
             return self.rms_forward(x)
         else:

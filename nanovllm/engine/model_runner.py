@@ -6,6 +6,7 @@ import torch.distributed as dist
 from multiprocessing.synchronize import Event
 from multiprocessing.shared_memory import SharedMemory
 
+from nanovllm import kernels
 from nanovllm.config import Config
 from nanovllm.engine.sequence import Sequence
 from nanovllm.models.qwen3 import Qwen3ForCausalLM
@@ -79,6 +80,7 @@ class ModelRunner:
         default_dtype = torch.get_default_dtype()
         torch.set_default_dtype(hf_config.dtype)
         torch.set_default_device("cuda")
+        kernels.backend = config.kernel_backend    # read by RMSNorm and SiluAndMul when they are built
         self.model = Qwen3ForCausalLM(hf_config)
         load_model(self.model, config.model)
         # Draft model: a small model that guesses tokens for the big one. It shares the block tables with the big

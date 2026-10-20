@@ -137,7 +137,7 @@ class NanoEngine:
                              spec_dynamic_k=args.dynamic_k, draft_model=self.draft_model,
                              enable_mixed_batching=args.mixed, mixed_cuda_graph=not args.no_mixed_graph,
                              max_num_batched_tokens=args.max_num_batched_tokens, max_num_seqs=args.max_num_seqs,
-                             gpu_memory_utilization=args.gpu_memory_utilization)
+                             gpu_memory_utilization=args.gpu_memory_utilization, kernel_backend=args.kernel_backend)
         self.tokenizer = llm.tokenizer
         self.spec = args.spec
         if args.spec == "ngram" and args.spec_proposer == "random":
@@ -160,7 +160,7 @@ class NanoEngine:
     def stats(self):
         config = self.llm.config
         s = {"engine_version": "nano-vllm " + git_commit(), "kv_blocks": config.num_kvcache_blocks,
-             "kv_tokens": config.num_kvcache_blocks * config.kvcache_block_size,
+             "kv_tokens": config.num_kvcache_blocks * config.kvcache_block_size, "kernel_backend": config.kernel_backend,
              "spec_max_batch": self.llm.spec_max_batch_size if self.spec else 0,
              "mixed_steps": self.llm.num_mixed_steps, "preemptions": self.llm.scheduler.num_preemptions}
         if self.spec:
@@ -208,6 +208,7 @@ def main():
     p.add_argument("--max-num-seqs", type=int, default=512, help="most requests running together")
     p.add_argument("--gpu-memory-utilization", type=float, default=0.9)
     p.add_argument("--max-model-len", type=int, default=4096)
+    p.add_argument("--kernel-backend", choices=["compile", "triton"], default="compile", help="RMSNorm and SiluAndMul implementation")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", help="also write the result as JSON")
     args = p.parse_args()
@@ -215,8 +216,8 @@ def main():
         p.error("--workload sharegpt needs --dataset (made by scripts/sharegpt.py sample)")
 
     if args.engine == "vllm":
-        if args.dynamic_k or args.spec_proposer != "ngram" or args.no_mixed_graph or args.spec_max_batch:
-            p.error("--dynamic-k, --spec-proposer, --no-mixed-graph and --spec-max-batch are nano-vllm only")
+        if args.dynamic_k or args.spec_proposer != "ngram" or args.no_mixed_graph or args.spec_max_batch or args.kernel_backend != "compile":
+            p.error("--dynamic-k, --spec-proposer, --no-mixed-graph, --spec-max-batch and --kernel-backend are nano-vllm only")
         sys.path.insert(0, os.path.join(ROOT, "scripts"))
         from vllm_adapter import VllmEngine
         engine = VllmEngine(args)
