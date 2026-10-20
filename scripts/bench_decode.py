@@ -13,7 +13,7 @@ C + 2 + N + 1 tokens (prompt, 2 untimed decode steps, N timed, 1 more so it does
 needs ceil(that / 256) blocks; B of them must fit. Qwen3-0.6B on a 6 GB RTX 3060 Laptop with the defaults below
 gets 111 blocks (28,416 tokens): batch 32 fits up to ctx 637 (3 blocks each = 96), so ctx 1024 (160 blocks) doesn't.
 
-Usage: python scripts/bench_decode.py [--kernel-backend compile|triton] [--batch 1 8 32] [--ctx 256 512]
+Usage: python scripts/bench_decode.py [--kernel-backend compile|triton|triton_fused] [--batch 1 8 32] [--ctx 256 512]
                                       [--steps 128] [--out result.json]
 """
 import argparse
@@ -31,7 +31,7 @@ sys.path.insert(0, ROOT)
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--model", default=os.environ.get("MODEL", os.path.expanduser("~/huggingface/Qwen3-0.6B/")))
-    p.add_argument("--kernel-backend", choices=["compile", "triton"], default="compile")
+    p.add_argument("--kernel-backend", choices=["compile", "triton", "triton_fused"], default="compile")
     p.add_argument("--batch", type=int, nargs="+", default=[1, 8, 32])
     p.add_argument("--ctx", type=int, nargs="+", default=[256, 512], help="prompt length (context when decode starts)")
     p.add_argument("--steps", type=int, default=128, help="timed decode steps")

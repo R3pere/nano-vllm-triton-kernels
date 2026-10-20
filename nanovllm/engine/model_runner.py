@@ -80,7 +80,7 @@ class ModelRunner:
         default_dtype = torch.get_default_dtype()
         torch.set_default_dtype(hf_config.dtype)
         torch.set_default_device("cuda")
-        kernels.backend = config.kernel_backend    # read by RMSNorm and SiluAndMul when they are built
+        kernels.backend = config.kernel_backend    # read by RMSNorm, SiluAndMul and Qwen3Attention when they are built
         self.model = Qwen3ForCausalLM(hf_config)
         load_model(self.model, config.model)
         # Draft model: a small model that guesses tokens for the big one. It shares the block tables with the big
@@ -583,7 +583,7 @@ class ModelRunner:
         layers = self.model.model.layers
         for i in range(len(layers) + 1):
             if i:
-                pv["o"][:n] = layers[i - 1].self_attn.attn(pv["q"][:n], pv["k"][:n], pv["v"][:n])
+                pv["o"][:n] = layers[i - 1].self_attn.attn(pv["q"][:n], pv["k"][:n], pv["v"][:n], pv["positions"][:n])
             if self.enforce_eager:
                 self.run_segment(i, bucket)
             else:

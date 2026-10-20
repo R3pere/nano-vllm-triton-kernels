@@ -39,12 +39,16 @@ Variants checked:
   triton_eager, triton_graph, triton_graph_chunked, triton_spec_ngram_graph, triton_mixed_graph - the same runs
                    with kernel_backend="triton" (RMSNorm, Add+RMSNorm and SiluAndMul as hand-written Triton
                    kernels); "same as <compile variant>" is reported, not required
+  triton_fused_eager, triton_fused_graph, triton_fused_graph_chunked, triton_fused_spec_ngram_graph,
+  triton_fused_mixed_eager, triton_fused_mixed_graph - kernel_backend="triton_fused" (triton, plus q/k norm,
+                   rotary and the KV-cache write as one kernel); "same as <triton variant>" is reported, not required
 Each runs in its own process so they don't fight over GPU memory.
 
 Pairs that run exactly the same computation, only eager vs CUDA Graph, must give identical
 tokens on every prompt (MUST_MATCH): graph = eager, spec_ngram_graph = spec_ngram,
 spec_draft_graph = spec_draft, mixed_graph = mixed_eager (piecewise graphs vs the same segments run
-eagerly), triton_graph = triton_eager. (Dynamic k picks k from timings, so runs can differ in k and in bf16 near-ties; they only face
+eagerly), triton_graph = triton_eager, triton_fused_graph = triton_fused_eager,
+triton_fused_mixed_graph = triton_fused_mixed_eager. (Dynamic k picks k from timings, so runs can differ in k and in bf16 near-ties; they only face
 the referee.)
 
 A model guessing for itself should have almost every guess accepted (MIN_ACCEPTANCE). A bug in the
@@ -95,13 +99,26 @@ VARIANTS = {
     "triton_graph_chunked": dict(enforce_eager=False, max_num_batched_tokens=512, kernel_backend="triton"),
     "triton_spec_ngram_graph": dict(enforce_eager=False, speculative_method="ngram", num_speculative_tokens=4, kernel_backend="triton"),
     "triton_mixed_graph": dict(enforce_eager=False, enable_mixed_batching=True, max_num_batched_tokens=256, kernel_backend="triton"),
+    # kernel_backend="triton_fused": triton, plus q/k norm + rotary + KV write as one kernel inside Attention.forward
+    "triton_fused_eager": dict(enforce_eager=True, kernel_backend="triton_fused"),
+    "triton_fused_graph": dict(enforce_eager=False, kernel_backend="triton_fused"),
+    "triton_fused_graph_chunked": dict(enforce_eager=False, max_num_batched_tokens=512, kernel_backend="triton_fused"),
+    "triton_fused_spec_ngram_graph": dict(enforce_eager=False, speculative_method="ngram", num_speculative_tokens=4, kernel_backend="triton_fused"),
+    "triton_fused_mixed_eager": dict(enforce_eager=True, enable_mixed_batching=True, max_num_batched_tokens=256, kernel_backend="triton_fused"),
+    "triton_fused_mixed_graph": dict(enforce_eager=False, enable_mixed_batching=True, max_num_batched_tokens=256, kernel_backend="triton_fused"),
 }
 MUST_MATCH = {"graph": "eager", "spec_ngram_graph": "spec_ngram", "spec_draft_graph": "spec_draft", "mixed_graph": "mixed_eager",
-              "triton_graph": "triton_eager"}
+              "triton_graph": "triton_eager", "triton_fused_graph": "triton_fused_eager",
+              "triton_fused_mixed_graph": "triton_fused_mixed_eager"}
 # triton variant -> the same run with the compile backend. Only reported: the two backends round differently in places
 # (reduction order), so a bf16 near-tie may flip; both must still pass the referee.
 SAME_AS_COMPILE = {"triton_eager": "eager", "triton_graph": "graph", "triton_graph_chunked": "graph_chunked",
                    "triton_spec_ngram_graph": "spec_ngram_graph", "triton_mixed_graph": "mixed_graph"}
+# triton_fused variant -> the same run with the triton backend. Only reported: the fused kernel sums squares in its own
+# order, and the triton backend's rotary is Inductor code (which may contract multiply-adds); both must pass the referee.
+SAME_AS_TRITON = {"triton_fused_eager": "triton_eager", "triton_fused_graph": "triton_graph",
+                  "triton_fused_graph_chunked": "triton_graph_chunked", "triton_fused_spec_ngram_graph": "triton_spec_ngram_graph",
+                  "triton_fused_mixed_eager": "triton_mixed_graph", "triton_fused_mixed_graph": "triton_mixed_graph"}
 MIN_ACCEPTANCE = {name: 0.95 for name in VARIANTS if name.startswith("spec_draft")}
 
 QUESTIONS = [
@@ -231,6 +248,7 @@ def main(args):
     with tempfile.TemporaryDirectory() as tmp:
         # eager is the reference for "same as eager"; MUST_MATCH partners are needed for the exact check
         wanted = set(args.variants) | {"eager"} | {MUST_MATCH[n] for n in args.variants if n in MUST_MATCH}
+        wanted |= {SAME_AS_TRITON[n] for n in wanted if n in SAME_AS_TRITON}
         wanted |= {SAME_AS_COMPILE[n] for n in wanted if n in SAME_AS_COMPILE}
         names = [n for n in VARIANTS if n in wanted]
         runs = {name: call_worker(name, os.path.join(tmp, f"{name}.json"), args) for name in names}
@@ -261,7 +279,11 @@ def main(args):
             partner = SAME_AS_COMPILE[name]
             same_compile = sum(first_diff(a, b) is None for a, b in zip(results[partner], results[name]))
             note += f"  (same as {partner}: {same_compile}/{num_prompts}, reported only)"
-        if name.startswith("mixed") or name == "triton_mixed_graph":
+        if name in SAME_AS_TRITON:
+            partner = SAME_AS_TRITON[name]
+            same_triton = sum(first_diff(a, b) is None for a, b in zip(results[partner], results[name]))
+            note += f"  (same as {partner}: {same_triton}/{num_prompts}, reported only)"
+        if "mixed" in name:
             # otherwise the variant would test nothing new
             note += f"  (mixed steps {runs[name]['mixed_steps']}, must be > 0)"
             ok &= runs[name]["mixed_steps"] > 0

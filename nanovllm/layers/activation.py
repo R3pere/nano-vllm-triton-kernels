@@ -18,6 +18,6 @@ class SiluAndMul(nn.Module):
         return F.silu(x) * y
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
-        if self.backend == "triton":
+        if self.backend != "compile":    # triton and triton_fused
             return silu_and_mul(x)
         return self.silu_and_mul_compiled(x)

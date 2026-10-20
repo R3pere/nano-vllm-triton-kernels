@@ -4,6 +4,7 @@ import triton
 import triton.language as tl
 
 from flash_attn import flash_attn_varlen_func, flash_attn_with_kvcache
+from nanovllm.kernels.qk_norm_rope_kv import qk_norm_rope_kv
 from nanovllm.utils.context import get_context
 
 
@@ -55,11 +56,23 @@ class Attention(nn.Module):
         self.scale = scale
         self.num_kv_heads = num_kv_heads
         self.k_cache = self.v_cache = torch.tensor([])
+        # kernel_backend "triton_fused": (q_norm, k_norm, rotary_emb) of the model's attention, set by it (a plain tuple,
+        # so nn.Module doesn't register the modules twice). q and k then arrive un-normed and un-rotated, and
+        # forward does norm + rope + KV write in one kernel: it needs slot_mapping, which pre_attn can't read.
+        self.norm_rope = None
 
-    def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor):
+    def forward(self, q: torch.Tensor, k: torch.Tensor, v: torch.Tensor, positions: torch.Tensor | None = None):
         context = get_context()
         k_cache, v_cache = self.k_cache, self.v_cache
-        if k_cache.numel() and v_cache.numel():
+        if self.norm_rope is not None:
+            q_norm, k_norm, rotary_emb = self.norm_rope
+            # prefill without prefix cache reads k from here; everything else reads it from the cache
+            write_k = context.is_prefill and context.block_tables is None
+            q, k_out = qk_norm_rope_kv(q, k, v, positions, q_norm.weight, k_norm.weight, q_norm.eps,
+                                       rotary_emb.cos_sin_cache, k_cache, v_cache, context.slot_mapping, write_k)
+            if write_k:
+                k = k_out
+        elif k_cache.numel() and v_cache.numel():
             store_kvcache(k, v, k_cache, v_cache, context.slot_mapping)
         if context.is_prefill:
             if context.block_tables is not None:    # prefix cache

@@ -3,6 +3,7 @@ from torch import nn
 import torch.distributed as dist
 from transformers import Qwen3Config
 
+from nanovllm import kernels
 from nanovllm.layers.activation import SiluAndMul
 from nanovllm.layers.attention import Attention
 from nanovllm.layers.layernorm import RMSNorm
@@ -68,6 +69,10 @@ class Qwen3Attention(nn.Module):
         if not self.qkv_bias:
             self.q_norm = RMSNorm(self.head_dim, eps=rms_norm_eps)
             self.k_norm = RMSNorm(self.head_dim, eps=rms_norm_eps)
+        # kernel_backend "triton_fused": q/k norm and rotary move into self.attn (one kernel with the KV write)
+        self.fused_norm_rope = kernels.backend == "triton_fused" and not self.qkv_bias
+        if self.fused_norm_rope:
+            self.attn.norm_rope = (self.q_norm, self.k_norm, self.rotary_emb)
 
     def forward(
         self,
@@ -75,11 +80,12 @@ class Qwen3Attention(nn.Module):
         hidden_states: torch.Tensor,
     ) -> torch.Tensor:
         q, k, v = self.pre_attn(positions, hidden_states)
-        o = self.attn(q, k, v)
+        o = self.attn(q, k, v, positions)
         return self.post_attn(o)
 
     # The parts before and after self.attn, which work on every token separately (no get_context()):
     # piecewise CUDA graphs record them and run only the attention in between eagerly (see ModelRunner.run_piecewise).
+    # With fused_norm_rope, pre_attn returns q and k before norm and rotary (self.attn does them).
     def pre_attn(
         self,
         positions: torch.Tensor,
@@ -90,6 +96,8 @@ class Qwen3Attention(nn.Module):
         q = q.view(-1, self.num_heads, self.head_dim)
         k = k.view(-1, self.num_kv_heads, self.head_dim)
         v = v.view(-1, self.num_kv_heads, self.head_dim)
+        if self.fused_norm_rope:
+            return q, k, v
         if not self.qkv_bias:
             q = self.q_norm(q)
             k = self.k_norm(k)

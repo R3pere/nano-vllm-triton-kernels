@@ -208,7 +208,7 @@ def main():
     p.add_argument("--max-num-seqs", type=int, default=512, help="most requests running together")
     p.add_argument("--gpu-memory-utilization", type=float, default=0.9)
     p.add_argument("--max-model-len", type=int, default=4096)
-    p.add_argument("--kernel-backend", choices=["compile", "triton"], default="compile", help="RMSNorm and SiluAndMul implementation")
+    p.add_argument("--kernel-backend", choices=["compile", "triton", "triton_fused"], default="compile", help="RMSNorm and SiluAndMul implementation")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--out", help="also write the result as JSON")
     args = p.parse_args()
