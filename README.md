@@ -1,6 +1,6 @@
-## 算子融合（triton-ops 分支）
+## 算子融合
 
-这个分支在下面的投机解码 + 混合批处理版本上继续做，用 Triton 手写了推理热路径上的几个算子，又把 attention 前面那一段处理合成了一个 kernel。代码都在 `nanovllm/kernels/`，用 `LLM(path, kernel_backend=...)` 或者 `bench.py --kernel-backend` 切换：
+这个仓库在 [投机解码 + 混合批处理](https://github.com/R3pere/nano-vllm-spec-decode)（也就是下面第二节）的基础上继续做，用 Triton 手写了推理热路径上的几个算子，又把 attention 前面那一段处理合成了一个 kernel。代码都在 `nanovllm/kernels/`，用 `LLM(path, kernel_backend=...)` 或者 `bench.py --kernel-backend` 切换：
 
 - `compile`：默认，用 torch.compile。
 - `triton`：RMSNorm、Add+RMSNorm、SiLU×Mul 换成 Triton 版本。
