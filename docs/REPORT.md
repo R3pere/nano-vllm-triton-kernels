@@ -1,6 +1,6 @@
 # 项目报告：在 nano-vllm 上做投机解码和混合批处理
 
-> 写给面试官，也写给以后的自己。所有数字都来自租卡结果包里的原始 JSON（结果包已提交在 `benchmarks/`，见文末），每个数字都注明硬件、模型、负载、重复次数和复现命令。过程细节在 `docs/DEVLOG.md`。
+> 写给面试官，也写给以后的自己。所有数字都来自租卡结果包里的原始 JSON（结果包已提交在 `benchmarks/`，见文末），每个数字都注明硬件、模型、负载、重复次数和复现命令。
 
 ## 1. 一句话
 
@@ -147,7 +147,7 @@ python bench.py --model Qwen3-8B --engine vllm     --workload sharegpt --dataset
 
 ### 5.4 本机数字（补充）
 
-RTX 3060 Laptop 6GB + Qwen3-0.6B，只作补充，这台笔记本不同时间的状态差别很大，只在同一张表内比较（`scripts/bench_matrix.py`，详见 DEVLOG P2～P4b）：
+RTX 3060 Laptop 6GB + Qwen3-0.6B，只作补充，这台笔记本不同时间的状态差别很大，只在同一张表内比较（`scripts/bench_matrix.py`）：
 - 照抄型、温度 0、并发 1：投机 + 图 517 tok/s，不投机的图 139 tok/s，3.7 倍（P2，1 次）。
 - 混合 512 + 分段图，长 prompt 泊松 1 个/秒：ITL P99 97.5 → 48.9 ms，最长卡顿 254 → 57 ms，吞吐持平（P4b，1 次）。
 
@@ -183,6 +183,6 @@ RTX 3060 Laptop 6GB + Qwen3-0.6B，只作补充，这台笔记本不同时间的
 
 ## 9. 花费和结果包
 
-- 两次租卡共 **59 元**（P5b 44 元，其中约 15 元是空等用户回复；P5b3 15 元），预算上限 100 元。
+- 两次租卡共 **59 元**（P5b 44 元，其中约 15 元是实例空闲；P5b3 15 元），预算上限 100 元。
 - 结果包：`benchmarks/p5_20261015_2330.tar.gz`（P5b）和 `benchmarks/p5b3_20261019_2210.tar.gz`（P5b3），校验和在 `benchmarks/SHA256SUMS`。文中引用的 `results/p5b_extract/p5/`、`results/p5b3_extract/p5b3/` 就是这两个包解开后的目录：`mkdir -p results/p5b_extract results/p5b3_extract && tar -xzf benchmarks/p5_20261015_2330.tar.gz -C results/p5b_extract && tar -xzf benchmarks/p5b3_20261019_2210.tar.gz -C results/p5b3_extract`。每个包里有每格的 JSON 和日志、`tables.md`、`env/`（nvidia-smi、两套 pip freeze、git 提交号）、`rates.json`、`sharegpt_sample.json`。
-- 环境脚本 `scripts/setup_remote.sh`，操作手册 `docs/REMOTE.md`。
+- 环境脚本 `scripts/setup_remote.sh`。

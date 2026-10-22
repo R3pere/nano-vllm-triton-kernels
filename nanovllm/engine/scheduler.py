@@ -100,7 +100,7 @@ class Scheduler:
         Preemption, when a decoding request needs a block and none is free, takes the newest request holding blocks:
         a half-done prefill first (like vLLM V1, where those count as running), then the newest running request.
         Without step 3's order, a request preempted to the front of waiting could stand forever before a half-done
-        prefill holding the blocks it needs, with nothing scheduled at all (P4a's deadlock, see DEVLOG)."""
+        prefill holding the blocks it needs, with nothing scheduled at all (the P4a deadlock)."""
         budget = self.max_num_batched_tokens
         decode_seqs = []
         preempted = False

@@ -1,4 +1,4 @@
-> **本分支说明**：这是在上游 nano-vllm（提交 bb823b3）基础上做的个人学习项目。加入了**投机解码**（n-gram 和小模型草拟，贪心与随机采样，CUDA Graph，按接受率动态选草拟长度 k）和 **vLLM V1 式的混合批处理**（prefill 与 decode 同一步计算，分段 CUDA Graph），用 FP32 裁判、eager/图逐 token 一致、故障注入和随机压力测试保证正确性，并在 A100 + Qwen3-8B 上和 vLLM 0.15.1 做了同条件对比。**完整报告（设计取舍、负面结果、复现命令）见 [docs/REPORT.md](docs/REPORT.md)**；计划见 [docs/PLAN.md](docs/PLAN.md)，过程见 [docs/DEVLOG.md](docs/DEVLOG.md)。下面上游 logo 之后的内容是上游原文。
+> **本分支说明**：这是在上游 nano-vllm（提交 bb823b3）基础上做的个人学习项目。加入了**投机解码**（n-gram 和小模型草拟，贪心与随机采样，CUDA Graph，按接受率动态选草拟长度 k）和 **vLLM V1 式的混合批处理**（prefill 与 decode 同一步计算，分段 CUDA Graph），用 FP32 裁判、eager/图逐 token 一致、故障注入和随机压力测试保证正确性，并在 A100 + Qwen3-8B 上和 vLLM 0.15.1 做了同条件对比。**完整报告（设计取舍、负面结果、复现命令）见 [docs/REPORT.md](docs/REPORT.md)**。下面上游 logo 之后的内容是上游原文。
 >
 > 关键结果（A100-SXM4-80GB，目标 Qwen3-8B，草拟 Qwen3-0.6B，BF16；“3 次”为 3 次均值）：
 >

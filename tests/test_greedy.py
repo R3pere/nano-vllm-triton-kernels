@@ -61,7 +61,7 @@ count as not accepted), e.g. 0.969 at k=4 but 0.942 at k=8 for the same per-gues
 
 --num-prompts 30 makes decode batches bigger than 16. Before P5b2, plain decode in eager didn't pad its batch the way
 CUDA graphs do (10 requests: 10 vs 16); with 0.6B's matrix shapes cuBLAS gives the same numbers at batch <= 16, so the
-10 prompts passed, but 30 prompts showed graph = eager on only 6/30 (see DEVLOG, P5b2).
+10 prompts passed, but 30 prompts showed graph = eager on only 6/30.
 
 Usage: python tests/test_greedy.py [--model PATH] [--draft-model PATH] [--max-tokens N] [--num-prompts N] [--tol T] [--variants NAME ...]
 """

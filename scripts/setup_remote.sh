@@ -127,7 +127,7 @@ else
             fi
         done
     fi
-    [ -f "$WHEELS/$FA_WHEEL" ] || die "could not download $FA_WHEEL; upload it to $WHEELS/ (see docs/REMOTE.md) and rerun"
+    [ -f "$WHEELS/$FA_WHEEL" ] || die "could not download $FA_WHEEL; upload it to $WHEELS/ and rerun"
     echo "$FA_SHA256  $WHEELS/$FA_WHEEL" | sha256sum -c - || { rm -f "$WHEELS/$FA_WHEEL"; die "flash-attn wheel checksum mismatch, deleted it; rerun"; }
     install "$NANO" --no-deps "$WHEELS/$FA_WHEEL"
     install "$NANO" einops    # flash-attn's only dependency besides torch
@@ -177,7 +177,7 @@ if [ -f "$SHAREGPT" ]; then
     echo "already downloaded"
 else
     "$NANO/bin/python" "$REPO/scripts/sharegpt.py" download --out "$P5/datasets" \
-        || echo "WARNING: ShareGPT download failed. Upload results/p5/sharegpt_sample.json made on another machine instead (docs/REMOTE.md)"
+        || echo "WARNING: ShareGPT download failed. Upload results/p5/sharegpt_sample.json made on another machine instead"
 fi
 
 step "8. p5.env and smoke test"

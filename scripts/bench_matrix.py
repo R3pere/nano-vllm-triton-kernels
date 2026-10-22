@@ -1,4 +1,4 @@
-"""Runs the benchmark comparison matrix and prints the tables used in docs/DEVLOG.md.
+"""Runs the benchmark comparison matrix and prints the comparison tables.
 
 Every run is one `python bench.py ...` in its own process (a fresh engine each time), saved as
 <out>/<name>.json. Runs whose JSON already exists are skipped, so an interrupted matrix can be resumed;
