@@ -195,6 +195,3 @@ cython_debug/
 .cursorindexingignore
 # benchmark results (scripts/bench_matrix.py)
 results/
-
-# P5: paths written by scripts/setup_remote.sh
-p5.env

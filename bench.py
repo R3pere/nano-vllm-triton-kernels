@@ -49,7 +49,7 @@ Usage: python bench.py [--engine nanovllm|vllm] [--workload random|copy|chat|sha
                        [--temperature T] [--enforce-eager] [--spec ngram|draft [--k K] [--dynamic-k]
                        [--draft-model PATH] [--spec-proposer random] [--spec-max-batch B]]
                        [--mixed [--no-mixed-graph]] [--max-num-batched-tokens N] [--out result.json]
-scripts/bench_matrix.py runs the whole comparison matrix and prints the tables; scripts/run_p5.py the P5 runs.
+scripts/bench_matrix.py runs the whole comparison matrix and prints the tables.
 """
 import argparse
 import json
